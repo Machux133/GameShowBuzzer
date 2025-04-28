@@ -186,7 +186,15 @@
             tbody.innerHTML = state.contestants.map(contestant => `
                 <tr>
                     <td>${contestant.name}</td>
+                <input type="checkbox" id="chk-${contestant.name}" class="contestant-check">
+                <label for="chk-${contestant.name}">${contestant.name}</label>
                     <td>${contestant.points}</td>
+                     <div class="point-buttons">
+                    <!-- Your existing point buttons -->
+                    <button onclick="adjustPoints('${contestant.name}', -100)">-100</button>
+                    <!-- ... other buttons ... -->
+                    <button class="remove-btn" onclick="removeSingleContestant('${contestant.name}')">Remove</button>
+                </div>
                     <td>
                         <div class="point-buttons">
                             <button onclick="adjustPoints('${contestant.name}', -100)">-100</button>
@@ -223,7 +231,19 @@
                 nameInput.value = '';
             }
         }
+        function removeContestant() {
+        const checkboxes = document.querySelectorAll('.contestant-check:checked');
+        checkboxes.forEach(checkbox => {
+            const name = checkbox.id.replace('chk-', '');
+            socket.emit('removeContestant', name);
+        });
+    }
 
+    function removeSingleContestant(name) {
+        if (confirm(`Are you sure you want to remove ${name}?`)) {
+            socket.emit('removeContestant', name);
+        }
+    }
         function resetBuzzer() {
             socket.emit('resetBuzzer');
             if (autoUnlockTimer) clearTimeout(autoUnlockTimer);
