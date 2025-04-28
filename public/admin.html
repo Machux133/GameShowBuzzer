@@ -1,0 +1,260 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Game Show Admin Panel</title>
+    <style>
+        :root {
+            --bg-color: #ffffff;
+            --text-color: #333333;
+            --panel-bg: #f5f5f5;
+            --table-border: #ddd;
+            --th-bg: #4CAF50;
+            --th-color: white;
+            --winner-bg: #ffeb3b;
+            --button-bg: #4CAF50;
+            --button-color: white;
+        }
+        
+        .dark-mode {
+            --bg-color: #1a1a1a;
+            --text-color: #f0f0f0;
+            --panel-bg: #2d2d2d;
+            --table-border: #444;
+            --th-bg: #2E7D32;
+            --th-color: #f0f0f0;
+            --winner-bg: #b39e00;
+            --button-bg: #2E7D32;
+            --button-color: #f0f0f0;
+        }
+        
+        body { 
+            font-family: Arial, sans-serif; 
+            margin: 20px; 
+            background-color: var(--bg-color); 
+            color: var(--text-color);
+            transition: background-color 0.3s, color 0.3s;
+        }
+        .container { display: grid; grid-template-columns: 300px 1fr; gap: 30px; }
+        .control-panel { 
+            background: var(--panel-bg); 
+            padding: 20px; 
+            border-radius: 10px;
+            transition: background-color 0.3s;
+        }
+        button { 
+            padding: 8px 15px; 
+            margin: 5px; 
+            cursor: pointer;
+            background-color: var(--button-bg);
+            color: var(--button-color);
+            border: none;
+            border-radius: 4px;
+            transition: all 0.3s;
+        }
+        button:hover {
+            opacity: 0.9;
+        }
+        table { width: 100%; border-collapse: collapse; margin-top: 15px; }
+        th, td { padding: 12px; text-align: left; border-bottom: 1px solid var(--table-border); }
+        th { background-color: var(--th-bg); color: var(--th-color); }
+        input[type="number"], input[type="text"] { 
+            width: 80px; 
+            padding: 5px;
+            background-color: var(--panel-bg);
+            color: var(--text-color);
+            border: 1px solid var(--table-border);
+        }
+        .status-indicator { 
+            padding: 10px; 
+            border-radius: 5px;
+            margin: 10px 0;
+            font-weight: bold;
+        }
+        .locked { background-color: #ff4444; color: white; }
+        .unlocked { background-color: #00C851; color: white; }
+        .winner-display {
+            font-size: 24px;
+            padding: 15px;
+            margin: 15px 0;
+            background-color: var(--winner-bg);
+            border-radius: 5px;
+            text-align: center;
+            transition: background-color 0.3s;
+        }
+        .dark-mode-toggle {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            z-index: 1000;
+            padding: 8px 15px;
+            background-color: var(--button-bg);
+            color: var(--button-color);
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        .point-buttons {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 5px;
+            margin-top: 10px;
+        }
+        .point-buttons button {
+            flex: 1 1 calc(50% - 5px);
+            min-width: 60px;
+        }
+    </style>
+</head>
+<body>
+    <button class="dark-mode-toggle" onclick="toggleDarkMode()">Toggle Dark Mode</button>
+    
+    <div class="container">
+        <div class="control-panel">
+            <h2>Game Controls</h2>
+            
+            <div>
+                <h3>Contestant Management</h3>
+                <input type="text" id="contestantName" placeholder="Enter name">
+                <button onclick="addContestant()">Add Contestant</button>
+            </div>
+
+            <div>
+                <h3>Buzzer Controls</h3>
+                <button onclick="resetBuzzer()">Reset Buzzer</button>
+                <button id="lockButton" onclick="toggleLock()"></button>
+                
+                <div id="winnerDisplay" class="winner-display" style="display: none;"></div>
+                
+                <div style="margin-top: 15px;">
+                    <h4>Auto Unlock Timer</h4>
+                    <input type="number" id="autoUnlockTime" placeholder="Seconds" min="1">
+                    <button onclick="setAutoUnlock()">Set Timer</button>
+                </div>
+            </div>
+
+            <div id="buzzerStatus" class="status-indicator"></div>
+        </div>
+
+        <div>
+            <h2>Scoreboard</h2>
+            <table id="scoreboard">
+                <thead>
+                    <tr>
+                        <th>Contestant</th>
+                        <th>Score</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody></tbody>
+            </table>
+        </div>
+    </div>
+
+    <script src="/socket.io/socket.io.js"></script>
+    <script>
+        const socket = io();
+        let autoUnlockTimer = null;
+        let darkMode = localStorage.getItem('adminDarkMode') === 'true';
+
+        // Apply dark mode on load
+        if (darkMode) {
+            document.body.classList.add('dark-mode');
+        }
+
+        function updateUI(state) {
+            // Update buzzer status
+            const statusElement = document.getElementById('buzzerStatus');
+            statusElement.className = `status-indicator ${state.buzzerLocked ? 'locked' : 'unlocked'}`;
+            statusElement.textContent = state.buzzerLocked ? 'Buzzer Locked' : 'Buzzer Unlocked';
+
+            // Update lock button
+            const lockButton = document.getElementById('lockButton');
+            lockButton.textContent = state.buzzerLocked ? 'Unlock Buzzer' : 'Lock Buzzer';
+            lockButton.style.backgroundColor = state.buzzerLocked ? '#4CAF50' : '#ff4444';
+
+            // Update winner display
+            const winnerDisplay = document.getElementById('winnerDisplay');
+            if (state.currentWinner) {
+                winnerDisplay.style.display = 'block';
+                winnerDisplay.textContent = `${state.currentWinner} buzzed first`;
+            } else {
+                winnerDisplay.style.display = 'none';
+            }
+
+            // Update scoreboard
+            const tbody = document.querySelector('#scoreboard tbody');
+            tbody.innerHTML = state.contestants.map(contestant => `
+                <tr>
+                    <td>${contestant.name}</td>
+                    <td>${contestant.points}</td>
+                    <td>
+                        <div class="point-buttons">
+                            <button onclick="adjustPoints('${contestant.name}', -100)">-100</button>
+                            <button onclick="adjustPoints('${contestant.name}', 100)">+100</button>
+                            <button onclick="adjustPoints('${contestant.name}', -80)">-80</button>
+                            <button onclick="adjustPoints('${contestant.name}', 80)">+80</button>
+                            <button onclick="adjustPoints('${contestant.name}', -60)">-60</button>
+                            <button onclick="adjustPoints('${contestant.name}', 60)">+60</button>
+                            <button onclick="adjustPoints('${contestant.name}', -40)">-40</button>
+                            <button onclick="adjustPoints('${contestant.name}', 40)">+40</button>
+                            <button onclick="adjustPoints('${contestant.name}', -20)">-20</button>
+                            <button onclick="adjustPoints('${contestant.name}', 20)">+20</button>
+                            <button onclick="adjustPoints('${contestant.name}', -10)">-10</button>
+                            <button onclick="adjustPoints('${contestant.name}', 10)">+10</button>
+                            <button onclick="adjustPoints('${contestant.name}', -1)">-1</button>
+                            <button onclick="adjustPoints('${contestant.name}', 1)">+1</button>
+                        </div>
+                    </td>
+                </tr>
+            `).join('');
+        }
+
+        function toggleDarkMode() {
+            darkMode = !darkMode;
+            document.body.classList.toggle('dark-mode');
+            localStorage.setItem('adminDarkMode', darkMode);
+        }
+
+        function addContestant() {
+            const nameInput = document.getElementById('contestantName');
+            const name = nameInput.value.trim();
+            if (name) {
+                socket.emit('addContestant', name);
+                nameInput.value = '';
+            }
+        }
+
+        function resetBuzzer() {
+            socket.emit('resetBuzzer');
+            if (autoUnlockTimer) clearTimeout(autoUnlockTimer);
+        }
+
+        function toggleLock() {
+            const newState = document.getElementById('lockButton').textContent === 'Lock Buzzer';
+            socket.emit('toggleLock', newState);
+        }
+
+        function setAutoUnlock() {
+            const seconds = parseInt(document.getElementById('autoUnlockTime').value);
+            if (seconds > 0) {
+                socket.emit('toggleLock', true);
+                autoUnlockTimer = setTimeout(() => {
+                    socket.emit('toggleLock', false);
+                }, seconds * 1000);
+            }
+        }
+
+        function adjustPoints(name, amount) {
+            socket.emit('adjustPoints', { name, amount });
+        }
+
+        // Socket event listeners
+        socket.on('stateUpdate', (state) => {
+            updateUI(state);
+        });
+
+        // Initial setup
+        document.getElementById('lockButton').textContent = 'Lock Buzzer';
+    </script>
+</body>
+</html>
