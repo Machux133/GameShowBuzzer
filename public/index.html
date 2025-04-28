@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Contestant Buzzer</title>
+    <style>
+        :root {
+            --bg-color: #ffffff;
+            --text-color: #333333;
+            --buzzer-locked: #ff4444;
+            --buzzer-unlocked: #00C851;
+            --buzzer-disabled: #cccccc;
+            --buzzer-disabled-text: #666666;
+        }
+        
+        .dark-mode {
+            --bg-color: #1a1a1a;
+            --text-color: #f0f0f0;
+            --buzzer-locked: #d32f2f;
+            --buzzer-unlocked: #007E33;
+            --buzzer-disabled: #424242;
+            --buzzer-disabled-text: #9e9e9e;
+        }
+        
+        body { 
+            display: flex; 
+            flex-direction: column; 
+            justify-content: center; 
+            align-items: center; 
+            height: 100vh;
+            font-family: Arial, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            transition: background-color 0.3s, color 0.3s;
+        }
+        #contestant-name {
+            font-size: 24px;
+            margin-bottom: 20px;
+        }
+        #buzzer { 
+            width: 200px; 
+            height: 200px; 
+            border-radius: 50%; 
+            font-size: 24px;
+            cursor: pointer;
+            border: none;
+            outline: none;
+            transition: all 0.3s;
+        }
+        .locked { 
+            background-color: var(--buzzer-locked); 
+            color: white;
+        }
+        .unlocked { 
+            background-color: var(--buzzer-unlocked); 
+            color: white;
+        }
+        .disabled { 
+            background-color: var(--buzzer-disabled); 
+            color: var(--buzzer-disabled-text);
+            cursor: not-allowed;
+        }
+        #error-message {
+            color: red;
+            margin-top: 15px;
+            height: 20px;
+        }
+        .dark-mode-toggle {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            z-index: 1000;
+            padding: 8px 15px;
+            background-color: var(--text-color);
+            color: var(--bg-color);
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+    </style>
+</head>
+<body>
+    <button class="dark-mode-toggle" onclick="toggleDarkMode()">Toggle Dark Mode</button>
+    
+    <div id="contestant-name"></div>
+    <button id="buzzer" class="locked" disabled>BUZZER LOCKED</button>
+    <div id="error-message"></div>
+
+    <script src="/socket.io/socket.io.js"></script>
+    <script>
+        const socket = io();
+        const buzzer = document.getElementById('buzzer');
+        const nameDisplay = document.getElementById('contestant-name');
+        const errorDisplay = document.getElementById('error-message');
+        
+        let contestantName = '';
+        let darkMode = localStorage.getItem('contestantDarkMode') === 'true';
+        
+        // Apply dark mode on load
+        if (darkMode) {
+            document.body.classList.add('dark-mode');
+        }
+        
+        // Ask for name on load
+        while (!contestantName) {
+            contestantName = prompt('Please enter your contestant name:');
+            if (contestantName) {
+                nameDisplay.textContent = `Contestant: ${contestantName}`;
+                socket.emit('addContestant', contestantName);
+            }
+        }
+        
+        socket.on('stateUpdate', ({ buzzerLocked, buzzerAvailable, currentWinner }) => {
+            if (currentWinner) {
+                buzzer.className = 'locked';
+                buzzer.textContent = currentWinner === contestantName 
+                    ? 'YOU BUZZED FIRST!' 
+                    : `${currentWinner} BUZZED FIRST`;
+            } else {
+                buzzer.className = buzzerLocked ? 'locked' : 'unlocked';
+                buzzer.textContent = buzzerLocked ? 'BUZZER LOCKED' : 'READY TO BUZZ';
+            }
+            
+            buzzer.disabled = !buzzerAvailable || buzzerLocked || currentWinner;
+        });
+        
+        socket.on('invalidName', () => {
+            errorDisplay.textContent = 'Name not recognized. Please refresh and try again.';
+            buzzer.disabled = true;
+        });
+        
+        buzzer.addEventListener('click', () => {
+            socket.emit('buzz', contestantName);
+        });
+        
+        function toggleDarkMode() {
+            darkMode = !darkMode;
+            document.body.classList.toggle('dark-mode');
+            localStorage.setItem('contestantDarkMode', darkMode);
+        }
+    </script>
+</body>
+</html>
