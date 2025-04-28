@@ -1,7 +1,7 @@
 const express = require('express');
 const socketIO = require('socket.io');
 const app = express();
-const server = app.listen(3000);
+const server = app.listen(30434);
 const io = socketIO(server);
 
 let contestants = [];
@@ -10,8 +10,8 @@ let buzzerAvailable = true;
 let currentWinner = null;
 
 app.use(express.static('public'));
-console.log('Server running at http://localhost:3000/');
-console.log('for admin access, go to http://localhost:3000/admin.html');
+console.log('Server running at http://localhost:30434/');
+console.log('for admin access, go to http://localhost:30434/admin.html');
 console.log('Press Ctrl+C to stop the server.');
 
 io.on('connection', (socket) => {
