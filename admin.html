@@ -156,6 +156,7 @@
     <script>
         const socket = io();
         let darkMode = localStorage.getItem('adminDarkMode') === 'true';
+        const lastPointSelections = {};
 
         // Apply dark mode on load
         if (darkMode) {
@@ -181,31 +182,40 @@
             } else {
                 winnerDisplay.style.display = 'none';
             }
-
+            
             // Update scoreboard
             const tbody = document.querySelector('#scoreboard tbody');
-            tbody.innerHTML = state.contestants.map(contestant => `
-            <tr>
-                <td>${contestant.name}</td>
-                <td>${contestant.points}</td>
-                <td>
-                    <div class="point-control" data-name="${contestant.name}">
-                        <select class="point-select">
-                            <option value="1">1</option>
-                            <option value="10">10</option>
-                            <option value="20">20</option>
-                            <option value="40">40</option>
-                            <option value="60">60</option>
-                            <option value="80">80</option>
-                            <option value="100">100</option>
-                        </select>
-                        <button class="adjust-btn" data-dir="add">➕</button>
-                        <button class="adjust-btn" data-dir="sub">➖</button>
-                        <button class="remove-btn" onclick="removeSingleContestant('${contestant.name}')">Remove</button>
-                    </div>
-                </td>
-            </tr>
-        `).join('');
+            // Save current selections
+            document.querySelectorAll('.point-control').forEach(row => {
+                const name = row.getAttribute('data-name');
+                const select = row.querySelector('.point-select');
+                if (name && select) {
+                    lastPointSelections[name] = select.value;
+                }
+            });
+
+            tbody.innerHTML = state.contestants.map(contestant => {
+            const selectedValue = lastPointSelections[contestant.name] || "1";
+            return `
+                <tr>
+                    <td>${contestant.name}</td>
+                    <td>${contestant.points}</td>
+                    <td>
+                        <div class="point-control" data-name="${contestant.name}">
+                            <select class="point-select">
+                                ${[1, 10, 20, 40, 60, 80, 100].map(val =>
+                                    `<option value="${val}" ${selectedValue == val ? 'selected' : ''}>${val}</option>`
+                                ).join('')}
+                            </select>
+                            <button class="adjust-btn" data-dir="add">➕</button>
+                            <button class="adjust-btn" data-dir="sub">➖</button>
+                            <button class="remove-btn" onclick="removeSingleContestant('${contestant.name}')">Remove</button>
+                        </div>
+                    </td>
+                </tr>
+            `;
+        }).join('');
+
                 // After updating the DOM inside updateUI():
         document.querySelectorAll('.adjust-btn').forEach(button => {
             button.addEventListener('click', () => {
@@ -220,7 +230,7 @@
                 }
             });
         });
-
+        
 
         }
 
