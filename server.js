@@ -13,10 +13,11 @@ const ADMIN_PASSWORD = "puszka2025";
 
 app.use(express.static('public'));
 
-// Add a simple password-protected route for admin.html
-app.get('/admin.html', (req, res, next) => {
+const path = require('path');
+
+app.get('/admin.html', (req, res) => {
     if (req.query.password === ADMIN_PASSWORD) {
-        next();
+        res.sendFile(path.join(__dirname, 'admin.html')); // adjust path as needed
     } else {
         res.send(`
             <form method="GET" action="/admin.html">
@@ -28,19 +29,22 @@ app.get('/admin.html', (req, res, next) => {
     }
 });
 
-console.log('Server running at http://localhost:3000/');
-console.log('for admin access, go to http://localhost:3000/admin.html?password=puszka2025');
+
+console.log('Server running at http://localhost:30434/');
+console.log('for admin access, go to http://localhost:30434/admin.html?password=puszka2025');
 console.log('Press Ctrl+C to stop the server.');
 
 io.on('connection', (socket) => {
     socket.emit('stateUpdate', { contestants, buzzerLocked, buzzerAvailable, currentWinner });
 
     socket.on('addContestant', (name) => {
-        if (!contestants.some(c => c.name === name)) {
+        name = name.trim();
+        if (name && !contestants.some(c => c.name === name)) {
             contestants.push({ name, points: 0 });
             io.emit('stateUpdate', { contestants, buzzerLocked, buzzerAvailable, currentWinner });
         }
     });
+    
 
     // Add remove contestant handler
     socket.on('removeContestant', (name) => {
@@ -73,9 +77,13 @@ io.on('connection', (socket) => {
         io.emit('stateUpdate', { contestants, buzzerLocked, buzzerAvailable, currentWinner });
     });
 
-    socket.on('adjustPoints', ({name, amount}) => {
+    socket.on('adjustPoints', ({ name, amount }) => {
         const contestant = contestants.find(c => c.name === name);
-        if (contestant) contestant.points += amount;
-        io.emit('stateUpdate', { contestants, buzzerLocked, buzzerAvailable, currentWinner });
+        const parsedAmount = parseInt(amount);
+        if (contestant && !isNaN(parsedAmount)) {
+            contestant.points += parsedAmount;
+            io.emit('stateUpdate', { contestants, buzzerLocked, buzzerAvailable, currentWinner });
+        }
     });
+    
 });

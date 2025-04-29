@@ -93,16 +93,22 @@
             border-radius: 4px;
             cursor: pointer;
         }
-        .point-buttons {
+        .point-control {
             display: flex;
-            flex-wrap: wrap;
+            align-items: center;
             gap: 5px;
-            margin-top: 10px;
         }
-        .point-buttons button {
-            flex: 1 1 calc(50% - 5px);
-            min-width: 60px;
+
+        .point-control select {
+            padding: 5px;
         }
+
+        .point-control .adjust-btn {
+            padding: 4px 8px;
+            font-size: 16px;
+            line-height: 1;
+        }
+
     </style>
 </head>
 <body>
@@ -125,11 +131,7 @@
                 
                 <div id="winnerDisplay" class="winner-display" style="display: none;"></div>
                 
-                <div style="margin-top: 15px;">
-                    <h4>Auto Unlock Timer</h4>
-                    <input type="number" id="autoUnlockTime" placeholder="Seconds" min="1">
-                    <button onclick="setAutoUnlock()">Set Timer</button>
-                </div>
+
             </div>
 
             <div id="buzzerStatus" class="status-indicator"></div>
@@ -153,7 +155,6 @@
     <script src="/socket.io/socket.io.js"></script>
     <script>
         const socket = io();
-        let autoUnlockTimer = null;
         let darkMode = localStorage.getItem('adminDarkMode') === 'true';
 
         // Apply dark mode on load
@@ -184,37 +185,43 @@
             // Update scoreboard
             const tbody = document.querySelector('#scoreboard tbody');
             tbody.innerHTML = state.contestants.map(contestant => `
-                <tr>
-                    <td>${contestant.name}</td>
-                <input type="checkbox" id="chk-${contestant.name}" class="contestant-check">
-                <label for="chk-${contestant.name}">${contestant.name}</label>
-                    <td>${contestant.points}</td>
-                     <div class="point-buttons">
-                    <!-- Your existing point buttons -->
-                    <button onclick="adjustPoints('${contestant.name}', -100)">-100</button>
-                    <!-- ... other buttons ... -->
-                    <button class="remove-btn" onclick="removeSingleContestant('${contestant.name}')">Remove</button>
-                </div>
-                    <td>
-                        <div class="point-buttons">
-                            <button onclick="adjustPoints('${contestant.name}', -100)">-100</button>
-                            <button onclick="adjustPoints('${contestant.name}', 100)">+100</button>
-                            <button onclick="adjustPoints('${contestant.name}', -80)">-80</button>
-                            <button onclick="adjustPoints('${contestant.name}', 80)">+80</button>
-                            <button onclick="adjustPoints('${contestant.name}', -60)">-60</button>
-                            <button onclick="adjustPoints('${contestant.name}', 60)">+60</button>
-                            <button onclick="adjustPoints('${contestant.name}', -40)">-40</button>
-                            <button onclick="adjustPoints('${contestant.name}', 40)">+40</button>
-                            <button onclick="adjustPoints('${contestant.name}', -20)">-20</button>
-                            <button onclick="adjustPoints('${contestant.name}', 20)">+20</button>
-                            <button onclick="adjustPoints('${contestant.name}', -10)">-10</button>
-                            <button onclick="adjustPoints('${contestant.name}', 10)">+10</button>
-                            <button onclick="adjustPoints('${contestant.name}', -1)">-1</button>
-                            <button onclick="adjustPoints('${contestant.name}', 1)">+1</button>
-                        </div>
-                    </td>
-                </tr>
-            `).join('');
+            <tr>
+                <td>${contestant.name}</td>
+                <td>${contestant.points}</td>
+                <td>
+                    <div class="point-control" data-name="${contestant.name}">
+                        <select class="point-select">
+                            <option value="1">1</option>
+                            <option value="10">10</option>
+                            <option value="20">20</option>
+                            <option value="40">40</option>
+                            <option value="60">60</option>
+                            <option value="80">80</option>
+                            <option value="100">100</option>
+                        </select>
+                        <button class="adjust-btn" data-dir="add">➕</button>
+                        <button class="adjust-btn" data-dir="sub">➖</button>
+                        <button class="remove-btn" onclick="removeSingleContestant('${contestant.name}')">Remove</button>
+                    </div>
+                </td>
+            </tr>
+        `).join('');
+                // After updating the DOM inside updateUI():
+        document.querySelectorAll('.adjust-btn').forEach(button => {
+            button.addEventListener('click', () => {
+                const row = button.closest('.point-control');
+                const name = row.getAttribute('data-name');
+                const select = row.querySelector('.point-select');
+                const amount = parseInt(select.value);
+                if (button.dataset.dir === 'sub') {
+                    adjustPoints(name, -amount);
+                } else {
+                    adjustPoints(name, amount);
+                }
+            });
+        });
+
+
         }
 
         function toggleDarkMode() {
@@ -246,7 +253,7 @@
     }
         function resetBuzzer() {
             socket.emit('resetBuzzer');
-            if (autoUnlockTimer) clearTimeout(autoUnlockTimer);
+            
         }
 
         function toggleLock() {
@@ -254,19 +261,11 @@
             socket.emit('toggleLock', newState);
         }
 
-        function setAutoUnlock() {
-            const seconds = parseInt(document.getElementById('autoUnlockTime').value);
-            if (seconds > 0) {
-                socket.emit('toggleLock', true);
-                autoUnlockTimer = setTimeout(() => {
-                    socket.emit('toggleLock', false);
-                }, seconds * 1000);
-            }
-        }
-
         function adjustPoints(name, amount) {
+            console.log(`Adjusting ${name} by ${amount}`); // Debug
             socket.emit('adjustPoints', { name, amount });
-        }
+     }
+
 
         // Socket event listeners
         socket.on('stateUpdate', (state) => {
