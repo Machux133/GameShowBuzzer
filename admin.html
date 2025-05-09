@@ -1,8 +1,11 @@
 <!DOCTYPE html>
 <html>
 <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Game Show Admin Panel</title>
     <style>
+        /* CSS Variables */
         :root {
             --bg-color: #ffffff;
             --text-color: #333333;
@@ -13,8 +16,19 @@
             --winner-bg: #ffeb3b;
             --button-bg: #4CAF50;
             --button-color: white;
+            --button-hover-opacity: 0.9;
+            --locked-bg: #ff4444;
+            --unlocked-bg: #00C851;
+            --status-text: white;
+            --input-border: #ddd;
+            --focus-outline: #4CAF50;
+            --focus-outline-offset: 2px;
+            --section-margin: 15px;
+            --border-radius: 5px;
+            --transition-time: 0.3s;
         }
-        
+
+        /* Dark Mode Variables */
         .dark-mode {
             --bg-color: #1a1a1a;
             --text-color: #f0f0f0;
@@ -25,22 +39,50 @@
             --winner-bg: #b39e00;
             --button-bg: #2E7D32;
             --button-color: #f0f0f0;
+            --input-border: #555;
+            --focus-outline: #4CAF50;
         }
-        
+
+        /* Base Styles */
+        * {
+            box-sizing: border-box;
+        }
+
         body { 
             font-family: Arial, sans-serif; 
             margin: 20px; 
             background-color: var(--bg-color); 
             color: var(--text-color);
-            transition: background-color 0.3s, color 0.3s;
+            transition: background-color var(--transition-time), color var(--transition-time);
+            line-height: 1.6;
         }
-        .container { display: grid; grid-template-columns: 300px 1fr; gap: 30px; }
+
+        /* Layout */
+        .container { 
+            display: grid; 
+            grid-template-columns: 300px 1fr; 
+            gap: 30px; 
+        }
+
+        @media (max-width: 768px) {
+            .container {
+                grid-template-columns: 1fr;
+            }
+        }
+
         .control-panel { 
             background: var(--panel-bg); 
             padding: 20px; 
-            border-radius: 10px;
-            transition: background-color 0.3s;
+            border-radius: var(--border-radius);
+            transition: background-color var(--transition-time);
+            margin-bottom: var(--section-margin);
         }
+
+        .section {
+            margin-bottom: var(--section-margin);
+        }
+
+        /* Buttons */
         button { 
             padding: 8px 15px; 
             margin: 5px; 
@@ -49,38 +91,92 @@
             color: var(--button-color);
             border: none;
             border-radius: 4px;
-            transition: all 0.3s;
+            transition: all var(--transition-time);
         }
+
         button:hover {
-            opacity: 0.9;
+            opacity: var(--button-hover-opacity);
         }
-        table { width: 100%; border-collapse: collapse; margin-top: 15px; }
-        th, td { padding: 12px; text-align: left; border-bottom: 1px solid var(--table-border); }
-        th { background-color: var(--th-bg); color: var(--th-color); }
-        input[type="number"], input[type="text"] { 
-            width: 80px; 
-            padding: 5px;
+
+        button:focus {
+            outline: 2px solid var(--focus-outline);
+            outline-offset: var(--focus-outline-offset);
+        }
+
+        /* Table Styles */
+        table { 
+            width: 100%; 
+            border-collapse: collapse; 
+            margin-top: var(--section-margin); 
+        }
+
+        th, td { 
+            padding: 12px; 
+            text-align: left; 
+            border-bottom: 1px solid var(--table-border); 
+        }
+
+        th { 
+            background-color: var(--th-bg); 
+            color: var(--th-color); 
+        }
+
+        /* Form Elements */
+        input[type="number"], 
+        input[type="text"],
+        select { 
+            padding: 8px;
             background-color: var(--panel-bg);
             color: var(--text-color);
-            border: 1px solid var(--table-border);
+            border: 1px solid var(--input-border);
+            border-radius: 4px;
+            transition: border var(--transition-time);
         }
+
+        input[type="number"], 
+        input[type="text"] {
+            width: 80px;
+        }
+
+        input:focus,
+        select:focus {
+            outline: 2px solid var(--focus-outline);
+            outline-offset: var(--focus-outline-offset);
+            border-color: var(--focus-outline);
+        }
+
+        label {
+            margin-right: 5px;
+        }
+
+        /* Status Indicators */
         .status-indicator { 
             padding: 10px; 
-            border-radius: 5px;
+            border-radius: var(--border-radius);
             margin: 10px 0;
             font-weight: bold;
         }
-        .locked { background-color: #ff4444; color: white; }
-        .unlocked { background-color: #00C851; color: white; }
+
+        .locked { 
+            background-color: var(--locked-bg); 
+            color: var(--status-text); 
+        }
+
+        .unlocked { 
+            background-color: var(--unlocked-bg); 
+            color: var(--status-text); 
+        }
+
         .winner-display {
             font-size: 24px;
             padding: 15px;
             margin: 15px 0;
             background-color: var(--winner-bg);
-            border-radius: 5px;
+            border-radius: var(--border-radius);
             text-align: center;
-            transition: background-color 0.3s;
+            transition: background-color var(--transition-time);
         }
+
         .dark-mode-toggle {
             position: fixed;
             top: 20px;
@@ -93,10 +189,13 @@
             border-radius: 4px;
             cursor: pointer;
         }
+
+        /* Point Controls */
         .point-control {
             display: flex;
             align-items: center;
             gap: 5px;
+            flex-wrap: wrap;
         }
 
         .point-control select {
@@ -109,15 +208,39 @@
             line-height: 1;
         }
 
+        /* Timer Settings */
+        .timer-settings {
+            margin-top: var(--section-margin);
+        }
+
+        .timer-input-group {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 5px;
+        }
+
+        .timer-help {
+            margin-top: 5px;
+            font-size: 14px;
+            color: var(--text-color);
+            font-style: italic;
+        }
+
+        .timer-display {
+            margin-top: 10px;
+            font-size: 24px;
+            font-weight: bold;
+        }
     </style>
 </head>
 <body>
     <button class="dark-mode-toggle" onclick="toggleDarkMode()">Toggle Dark Mode</button>
-    
+
     <div class="container">
         <div class="control-panel">
             <h2>Game Controls</h2>
-            
+
             <div>
                 <h3>Contestant Management</h3>
                 <input type="text" id="contestantName" placeholder="Enter name">
@@ -128,10 +251,23 @@
                 <h3>Buzzer Controls</h3>
                 <button onclick="resetBuzzer()">Reset Buzzer</button>
                 <button id="lockButton" onclick="toggleLock()"></button>
-                
-                <div id="winnerDisplay" class="winner-display" style="display: none;"></div>
-                
 
+                <div id="winnerDisplay" class="winner-display" style="display: none;"></div>
+
+                <div class="timer-settings">
+                    <h4>Timer Settings</h4>
+                    <div class="timer-input-group">
+                        <label for="timerInput">Duration (seconds):</label>
+                        <input type="number" id="timerInput" min="1" value="5">
+                        <button onclick="setTimerDuration(document.getElementById('timerInput').value)">Set Timer</button>
+                    </div>
+                    <div class="timer-help">
+                        Enter a custom duration in seconds
+                    </div>
+                    <div id="timerDisplay" class="timer-display" style="display: none;">
+                        Time remaining: <span id="timerValue">0</span>s
+                    </div>
+                </div>
             </div>
 
             <div id="buzzerStatus" class="status-indicator"></div>
@@ -182,7 +318,27 @@
             } else {
                 winnerDisplay.style.display = 'none';
             }
-            
+
+            // Update timer display
+            const timerDisplay = document.getElementById('timerDisplay');
+            const timerValue = document.getElementById('timerValue');
+
+            // Check if timer is active
+            if (state.remainingTime > 0) {
+                timerDisplay.style.display = 'block';
+                timerValue.textContent = state.remainingTime;
+            } else {
+                timerDisplay.style.display = 'none';
+            }
+
+            // Update timer input value
+            if (state.timerDuration) {
+                const timerInput = document.getElementById('timerInput');
+                if (timerInput) {
+                    timerInput.value = state.timerDuration;
+                }
+            }
+
             // Update scoreboard
             const tbody = document.querySelector('#scoreboard tbody');
             // Save current selections
@@ -230,7 +386,7 @@
                 }
             });
         });
-        
+
 
         }
 
@@ -263,7 +419,7 @@
     }
         function resetBuzzer() {
             socket.emit('resetBuzzer');
-            
+
         }
 
         function toggleLock() {
@@ -274,7 +430,11 @@
         function adjustPoints(name, amount) {
             console.log(`Adjusting ${name} by ${amount}`); // Debug
             socket.emit('adjustPoints', { name, amount });
-     }
+        }
+
+        function setTimerDuration(duration) {
+            socket.emit('setTimerDuration', duration);
+        }
 
 
         // Socket event listeners
